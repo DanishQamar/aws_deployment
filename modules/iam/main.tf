@@ -17,7 +17,8 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# --- FIX: Give the Execution Role permission to pull database secrets ---
+# --- FIX: Give the Execution Role permission to pull  database secrets ---
+# This is Correction #1 from ADR-002: Credential Management
 resource "aws_iam_policy" "ecs_execution_secrets_policy" {
   name = "ecs-execution-secrets-policy"
   policy = jsonencode({
@@ -59,13 +60,15 @@ resource "aws_iam_policy" "service1_policy" {
     Statement = [
       {
         # --- FIX: Added "sqs:GetQueueAttributes" to allow SqsTemplate to init ---
+        # This is Correction #3 from ADR-002: SQS Client Permissions
         Action = ["sqs:SendMessage", "sqs:GetQueueAttributes"] #
         # --- END FIX ---
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
       },
       {
-        Action   = ["rds-data:ExecuteStatement"] #
+        Action = ["rds-data:ExecuteStatement"] #
+
         Effect   = "Allow"
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
       },
@@ -103,6 +106,7 @@ resource "aws_iam_policy" "service2_policy" {
     Version = "2012-10-17"
     Statement = [
       {
+
         Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"] #
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
@@ -113,6 +117,7 @@ resource "aws_iam_policy" "service2_policy" {
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
       },
       {
+
         Action   = ["secretsmanager:GetSecretValue"]
         Effect   = "Allow"
         Resource = var.db_credentials_secret_arn

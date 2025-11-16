@@ -17,6 +17,7 @@ resource "aws_ecs_task_definition" "main" {
       memory = var.memory
       # --- END FIX ---
       essential = true
+
       portMappings = var.container_port != null ? [
         {
           containerPort = var.container_port
@@ -25,8 +26,10 @@ resource "aws_ecs_task_definition" "main" {
       ] : []
 
       # --- FIX: Removed secret ARN from environment ---
+      # Part of Correction #1 from ADR-002
       environment = [
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
+
         { name = "SQS_QUEUE_NAME", value = var.sqs_queue_name },
         { name = "AWS_REGION", value = data.aws_region.current.name },
         { name = "DB_HOST", value = var.db_host },
@@ -35,7 +38,9 @@ resource "aws_ecs_task_definition" "main" {
       ]
       # --- END FIX ---
 
+
       # --- FIX: Added secrets block to inject credentials ---
+      # This is Correction #1 from ADR-002: Credential Management
       secrets = [
         {
           "name" : "username", # Creates env var 'username'
@@ -44,6 +49,7 @@ resource "aws_ecs_task_definition" "main" {
         {
           "name" : "password", # Creates env var 'password'
           "valueFrom" : "${var.db_credentials_secret_arn}:password::"
+
         }
       ]
       # --- END FIX ---
@@ -51,8 +57,9 @@ resource "aws_ecs_task_definition" "main" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = var.log_group_name
-          "awslogs-region"        = data.aws_region.current.name
+          "awslogs-group"  = var.log_group_name
+          "awslogs-region" = data.aws_region.current.name
+
           "awslogs-stream-prefix" = var.service_name
         }
       }
@@ -82,6 +89,7 @@ resource "aws_lb_target_group" "main" {
 
   health_check {
     # --- FIX: Changed path from "/" to "/jobs" ---
+    # This is Correction #2 from ADR-002: ALB Health Check Path
     path     = "/jobs"
     protocol = "HTTP"
     matcher  = "200" # Be explicit
@@ -111,6 +119,7 @@ resource "aws_ecs_service" "main" {
   launch_type     = "FARGATE"
 
   # --- FIX: Added grace period to allow Spring Boot to start ---
+  # This is Correction #2 from ADR-002: Health Check Grace Period
   health_check_grace_period_seconds = var.create_alb ? 60 : 0
   # --- END FIX ---
 
@@ -157,8 +166,9 @@ resource "aws_appautoscaling_policy" "sqs_scaling_policy" {
 
     customized_metric_specification {
       metric_name = "ApproximateNumberOfMessagesVisible"
-      namespace   = "AWS/SQS"
-      statistic   = "Average"
+
+      namespace = "AWS/SQS"
+      statistic = "Average"
       dimensions {
         name  = "QueueName"
         value = data.aws_sqs_queue.main[0].name

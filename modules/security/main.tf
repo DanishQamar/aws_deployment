@@ -15,7 +15,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
- from_port   = 0
+    from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
@@ -29,6 +29,7 @@ resource "aws_security_group" "ecs" {
   vpc_id      = var.vpc_id
 
   # --- FIX: Allow TCP traffic on port 8080 from the ALB ---
+  # This is Correction #4 from ADR-002: Network Security
   ingress {
     description     = "Allow ALB to Service 1"
     from_port       = 8080 # This must match your container_port
@@ -45,12 +46,13 @@ resource "aws_security_group" "ecs" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
   tags = merge(var.tags, { Name = "ecs-sg" })
 }
 
 resource "aws_security_group" "db" {
   name        = "db-sg"
-description = "Security group for RDS database"
+  description = "Security group for RDS database"
   vpc_id      = var.vpc_id
 
   ingress {
@@ -63,7 +65,7 @@ description = "Security group for RDS database"
   egress {
     from_port   = 0
     to_port     = 0
-  protocol    = "-1"
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = merge(var.tags, { Name = "db-sg" })
