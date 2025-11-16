@@ -16,18 +16,35 @@ SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
 AWS_REGION = os.environ.get("AWS_REGION")
 
 # Database connection details from environment variables
+DB_CREDENTIALS_SECRET_ARN = os.environ.get("DB_CREDENTIALS_SECRET_ARN")
 DB_NAME = os.environ.get("DB_NAME")
-DB_USER = os.environ.get("DB_USER")
-DB_PASSWORD = os.environ.get("DB_PASSWORD")
 DB_HOST = os.environ.get("DB_HOST")
+
+def get_db_credentials():
+    """Retrieves database credentials from AWS Secrets Manager."""
+    if not DB_CREDENTIALS_SECRET_ARN:
+        logger.error("DB_CREDENTIALS_SECRET_ARN environment variable not set.")
+        return None
+
+    secrets_client = boto3.client("secretsmanager", region_name=AWS_REGION)
+    try:
+        response = secrets_client.get_secret_value(SecretId=DB_CREDENTIALS_SECRET_ARN)
+        secret = json.loads(response['SecretString'])
+        return secret
+    except Exception as e:
+        logger.error(f"Failed to retrieve database credentials from Secrets Manager: {e}")
+        return None
 
 def get_db_connection():
     """Establishes a connection to the PostgreSQL database."""
+    credentials = get_db_credentials()
+    if not credentials:
+        return None
     try:
         conn = psycopg2.connect(
             dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
+            user=credentials['username'],
+            password=credentials['password'],
             host=DB_HOST
         )
         return conn

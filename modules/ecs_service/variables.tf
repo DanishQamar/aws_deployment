@@ -62,3 +62,17 @@ variable "max_tasks" {
   type    = number
   default = 4 # As per your diagram
 }
+
+# Database variables (passed from root)
+variable "db_host" {
+  type    = string
+  default = null
+}
+variable "db_name" {
+  type    = string
+  default = null
+}
+variable "db_credentials_secret_arn" {
+  type    = string
+  default = null
+}

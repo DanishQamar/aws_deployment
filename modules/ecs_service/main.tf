@@ -25,7 +25,11 @@ resource "aws_ecs_task_definition" "main" {
         # Pass the SQS queue URL as an environment variable
         # This is used by the Python application to avoid hardcoding values.
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
-        { name = "AWS_REGION", value = data.aws_region.current.name }
+        { name = "AWS_REGION", value = data.aws_region.current.name },
+        { name = "DB_HOST", value = var.db_host },
+        { name = "DB_NAME", value = var.db_name },
+        # Pass the ARN of the secret, not the credentials themselves
+        { name = "DB_CREDENTIALS_SECRET_ARN", value = var.db_credentials_secret_arn }
       ]
       logConfiguration = {
         logDriver = "awslogs"

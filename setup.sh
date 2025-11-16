@@ -7,9 +7,7 @@ mkdir -p $PROJECT_NAME/service1 $PROJECT_NAME/service2 \
 
 # Create all the empty files
 touch $PROJECT_NAME/service1/Dockerfile \
-      $PROJECT_NAME/service1/run.sh \
       $PROJECT_NAME/service2/Dockerfile \
-      $PROJECT_NAME/service2/run.sh \
       $PROJECT_NAME/deployment.sh \
       $PROJECT_NAME/main.tf \
       $PROJECT_NAME/variables.tf \
@@ -35,6 +33,9 @@ touch $PROJECT_NAME/service1/Dockerfile \
       $PROJECT_NAME/modules/ecs_service/main.tf \
       $PROJECT_NAME/modules/ecs_service/variables.tf \
       $PROJECT_NAME/modules/ecs_service/outputs.tf
+      $PROJECT_NAME/modules/cloudfront/main.tf \
+      $PROJECT_NAME/modules/cloudfront/variables.tf \
+      $PROJECT_NAME/modules/cloudfront/outputs.tf
 
 # Print a success message and show the new structure
 echo "✅ Project structure '$PROJECT_NAME' created."

@@ -45,6 +45,11 @@ resource "aws_iam_policy" "service1_policy" {
         Action   = ["rds-data:ExecuteStatement"] # Example for RDS access
         Effect   = "Allow"
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
+      },
+      {
+        Action   = ["secretsmanager:GetSecretValue"]
+        Effect   = "Allow"
+        Resource = var.db_credentials_secret_arn
       }
     ]
   })
@@ -83,6 +88,11 @@ resource "aws_iam_policy" "service2_policy" {
         Action   = ["rds-data:ExecuteStatement"] # Example for RDS access [cite: 102]
         Effect   = "Allow"
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
+      },
+      {
+        Action   = ["secretsmanager:GetSecretValue"]
+        Effect   = "Allow"
+        Resource = var.db_credentials_secret_arn
       }
     ]
   })
