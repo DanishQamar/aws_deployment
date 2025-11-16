@@ -49,9 +49,19 @@ module "iam" {
 }
 
 module "ecs_cluster" {
-  source           = "./modules/ecs_cluster"
+  source = "./modules/ecs_cluster"
+
   ecs_cluster_name = "${var.project_name}-cluster"
   tags             = local.tags
+}
+
+# --- ADD THIS NEW MODULE FOR THE S3 BUCKET ---
+# (This assumes you created the modules/frontend directory and its files)
+module "frontend" {
+  source       = "./modules/frontend"
+  project_name = var.project_name
+  environment  = var.environment
+  tags         = local.tags
 }
 
 module "service1" {
@@ -70,7 +80,7 @@ module "service1" {
   tags                      = local.tags
   create_alb                = true
   alb_security_group_id     = module.security.alb_sg_id
-  container_port            = 8080
+  container_port            = 8080 // This must match your Java app's port
   sqs_queue_url             = module.messaging.sqs_queue_url
   db_host                   = module.database.db_instance_endpoint
   db_name                   = "appdb"
@@ -78,15 +88,16 @@ module "service1" {
 }
 
 module "service2" {
-  source                    = "./modules/ecs_service"
-  service_name              = "service2"
-  ecs_cluster_id            = module.ecs_cluster.ecs_cluster_id
-  ecs_cluster_name          = module.ecs_cluster.ecs_cluster_name
-  log_group_name            = module.ecs_cluster.log_group_name
-  image_uri                 = module.ecs_cluster.service2_ecr_repo_url
-  task_role_arn             = module.iam.service2_task_role_arn
-  execution_role_arn        = module.iam.ecs_task_execution_role_arn
-  vpc_id                    = module.vpc.vpc_id
+  source             = "./modules/ecs_service"
+  service_name       = "service2"
+  ecs_cluster_id     = module.ecs_cluster.ecs_cluster_id
+  ecs_cluster_name   = module.ecs_cluster.ecs_cluster_name
+  log_group_name     = module.ecs_cluster.log_group_name
+  image_uri          = module.ecs_cluster.service2_ecr_repo_url
+  task_role_arn      = module.iam.service2_task_role_arn
+  execution_role_arn = module.iam.ecs_task_execution_role_arn
+  vpc_id             = module.vpc.vpc_id
+
   subnet_ids                = module.vpc.private_subnets
   ecs_security_group_ids    = [module.security.ecs_sg_id]
   tags                      = local.tags
@@ -99,9 +110,14 @@ module "service2" {
   db_credentials_secret_arn = module.database.db_credentials_secret_arn
 }
 
+# --- MODIFY THIS MODULE ---
 module "cloudfront" {
   source       = "./modules/cloudfront"
   alb_dns_name = module.service1.alb_dns_name
   alb_zone_id  = module.service1.alb_zone_id
   tags         = local.tags
+
+  # --- ADD THESE TWO LINES TO FIX THE ERROR ---
+  s3_bucket_id = module.frontend.ui_bucket_domain_name
+  oai_path     = module.frontend.oai_path
 }

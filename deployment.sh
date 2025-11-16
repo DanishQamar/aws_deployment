@@ -58,6 +58,9 @@ deploy() {
     SERVICE1_REPO_URL=$(terraform output -raw service1_ecr_repository_url)
     SERVICE2_REPO_URL=$(terraform output -raw service2_ecr_repository_url)
     CLUSTER_NAME=$(terraform output -raw ecs_cluster_name)
+    
+    # --- ADD THIS LINE ---
+    UI_BUCKET_NAME=$(terraform output -raw ui_bucket_name)
 
     if [ -z "$SERVICE1_REPO_URL" ] || [ -z "$SERVICE2_REPO_URL" ]; then
         echo "Failed to get ECR repository URLs."
@@ -66,6 +69,10 @@ deploy() {
 
     echo "Service 1 Repo: $SERVICE1_REPO_URL"
     echo "Service 2 Repo: $SERVICE2_REPO_URL"
+
+    # --- ADD THIS BLOCK TO UPLOAD THE UI ---
+    echo "Uploading index.html to S3 bucket ${UI_BUCKET_NAME}..."
+    aws s3 cp ./index.html s3://${UI_BUCKET_NAME}/index.html --region ${AWS_REGION}
 
     # 3. Build and Push Docker Images
     echo "Logging in to AWS ECR..."
@@ -89,10 +96,11 @@ deploy() {
     # FIXED: Changed 'cloudfront_domain_name' to 'alb_dns_name' to match your outputs.tf
     # ---
     ALB_DNS=$(terraform output -raw alb_dns_name)
+    CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_domain_name)
     echo "----------------------------------------"
     echo "Deployment Complete!"
-    echo "Service 1 is available at: http://${ALB_DNS}/"
-    echo "(Try http://${ALB_DNS}/submit-job to test SQS)"
+    echo "UI is available at: https://${CLOUDFRONT_DOMAIN}/"
+    echo "Service 1 (ALB) is at: http://${ALB_DNS}/"
     echo "----------------------------------------"
 }
 

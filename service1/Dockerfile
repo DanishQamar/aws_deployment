@@ -1,19 +1,33 @@
-# Use an official Python runtime as a parent image
-FROM python:3.10-slim
+# --- Build Stage ---
+# Use an OpenJDK 17 image with Maven for building
+FROM maven:3.9.6-eclipse-temurin-17-focal AS build
 
-# Set the working directory
 WORKDIR /app
 
-# Copy the dependencies file and install them
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the build file and download dependencies
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Copy the application code
-COPY app.py .
+# Copy the source code
+COPY src ./src
 
-# Expose port 8080 (as specified in the terraform module)
+# --- REMOVE THE BROKEN LINE ---
+# (The "COPY ../index.html ..." line that was here is GONE)
+
+# Build the application
+RUN mvn package -DskipTests
+
+# --- Run Stage ---
+# Use a slim OpenJDK 17 runtime image
+FROM eclipse-temurin:17-jre-focal
+
+WORKDIR /app
+
+# Copy the built JAR file from the build stage
+COPY --from=build /app/target/*.jar app.jar
+
+# Expose port 8080, which Spring Boot uses by default
 EXPOSE 8080
 
-# Run the Flask app
-# Gunicorn is a production-ready server
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+# Run the Java application
+CMD ["java", "-jar", "app.jar"]
