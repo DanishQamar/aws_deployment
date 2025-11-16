@@ -10,7 +10,7 @@ This document outlines the high-level design for deploying a three-tier applicat
 
 ## 1. Solution Architecture
 
-<img src="images/solution_hld.png" alt="alt text" width="300" />
+<img src="images/solution_hld.png" alt="alt text" width="100%" />
 
 ### 1.1. Architectural Flow
 
