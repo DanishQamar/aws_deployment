@@ -7,7 +7,6 @@ resource "aws_security_group" "alb" {
   description = "Security group for ALB"
   vpc_id      = var.vpc_id
 
-  # Allow traffic only from CloudFront
   ingress {
     from_port       = 80
     to_port         = 80
@@ -16,7 +15,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    from_port   = 0
+ from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
@@ -29,17 +28,15 @@ resource "aws_security_group" "ecs" {
   description = "Security group for ECS tasks"
   vpc_id      = var.vpc_id
 
-  # Allow traffic from ALB
+  # --- FIX: Allow TCP traffic on port 8080 from the ALB ---
   ingress {
-    # --- START FIX ---
-    # Be specific about the port Service 1 uses (8080)
-    description     = "Allow ALB traffic to Service 1"
-    from_port       = 8080 # This is the container_port for service1
-    to_port         = 8080 # This is the container_port for service1
+    description     = "Allow ALB to Service 1"
+    from_port       = 8080 # This must match your container_port
+    to_port         = 8080
     protocol        = "tcp"
-    # --- END FIX ---
     security_groups = [aws_security_group.alb.id]
   }
+  # --- END FIX ---
 
   # Allow egress to internet (for ECR, etc.)
   egress {
@@ -53,10 +50,9 @@ resource "aws_security_group" "ecs" {
 
 resource "aws_security_group" "db" {
   name        = "db-sg"
-  description = "Security group for RDS database"
+description = "Security group for RDS database"
   vpc_id      = var.vpc_id
 
-  # Allow traffic from ECS tasks
   ingress {
     from_port       = 5432 # PostgreSQL
     to_port         = 5432
@@ -67,7 +63,7 @@ resource "aws_security_group" "db" {
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"
+  protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
   tags = merge(var.tags, { Name = "db-sg" })

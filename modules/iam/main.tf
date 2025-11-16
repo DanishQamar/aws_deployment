@@ -1,11 +1,11 @@
-# Standard execution role for ECS tasks [cite: 101]
+# Standard execution role for ECS tasks
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecs-task-execution-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -17,14 +17,35 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# --- FIX: Give the Execution Role permission to pull database secrets ---
+resource "aws_iam_policy" "ecs_execution_secrets_policy" {
+  name = "ecs-execution-secrets-policy"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action   = ["secretsmanager:GetSecretValue"]
+        Effect   = "Allow"
+        Resource = var.db_credentials_secret_arn # Must be the specific secret ARN
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_execution_secrets_attach" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_execution_secrets_policy.arn
+}
+# --- END FIX ---
+
 # --- Service 1 Task Role ---
 resource "aws_iam_role" "service1_task_role" {
   name = "service1-task-role"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -37,12 +58,14 @@ resource "aws_iam_policy" "service1_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["sqs:SendMessage"] # [cite: 101]
+        # --- FIX: Added "sqs:GetQueueAttributes" to allow SqsTemplate to init ---
+        Action = ["sqs:SendMessage", "sqs:GetQueueAttributes"] #
+        # --- END FIX ---
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
       },
       {
-        Action   = ["rds-data:ExecuteStatement"] # Example for RDS access
+        Action   = ["rds-data:ExecuteStatement"] #
         Effect   = "Allow"
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
       },
@@ -66,8 +89,8 @@ resource "aws_iam_role" "service2_task_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "ecs-tasks.amazonaws.com" }
     }]
   })
@@ -80,12 +103,12 @@ resource "aws_iam_policy" "service2_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"] # [cite: 101]
+        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"] #
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
       },
       {
-        Action   = ["rds-data:ExecuteStatement"] # Example for RDS access [cite: 102]
+        Action   = ["rds-data:ExecuteStatement"] # Example for RDS access
         Effect   = "Allow"
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
       },
