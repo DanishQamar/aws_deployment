@@ -1,0 +1,1 @@
+boto3  # To read from SQS and write to RDS
