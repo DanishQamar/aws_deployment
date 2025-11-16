@@ -59,24 +59,12 @@ resource "aws_iam_policy" "service1_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        # --- FIX: Added "sqs:GetQueueAttributes" to allow SqsTemplate to init ---
-        # This is Correction #3 from ADR-002: SQS Client Permissions
-        Action = ["sqs:SendMessage", "sqs:GetQueueAttributes"] #
-        # --- END FIX ---
+        # This is the ONLY permission service1's code needs
+        Action   = ["sqs:SendMessage", "sqs:GetQueueAttributes"]
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
-      },
-      {
-        Action = ["rds-data:ExecuteStatement"] #
-
-        Effect   = "Allow"
-        Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
-      },
-      {
-        Action   = ["secretsmanager:GetSecretValue"]
-        Effect   = "Allow"
-        Resource = var.db_credentials_secret_arn
       }
+      # The "rds-data" and "secretsmanager" blocks are GONE
     ]
   })
 }
