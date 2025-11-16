@@ -105,9 +105,12 @@ module "service2" {
   enable_sqs_scaling        = true
   sqs_queue_arn             = module.messaging.sqs_queue_arn
   sqs_queue_url             = module.messaging.sqs_queue_url
+  sqs_queue_name            = module.messaging.sqs_queue_name
   db_host                   = module.database.db_instance_endpoint
   db_name                   = "appdb"
   db_credentials_secret_arn = module.database.db_credentials_secret_arn
+
+
 }
 
 # --- MODIFY THIS MODULE ---

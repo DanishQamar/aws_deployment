@@ -54,6 +54,10 @@ variable "sqs_queue_url" {
   type    = string
   default = ""
 }
+variable "sqs_queue_name" {
+  type    = string
+  default = ""
+}
 variable "min_tasks" {
   type    = number
   default = 1

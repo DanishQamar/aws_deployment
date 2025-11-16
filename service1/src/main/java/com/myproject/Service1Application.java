@@ -17,14 +17,7 @@ public class Service1Application {
     }
 }
 
-@Controller
-class WebController {
-    // Serves the index.html page
-    @GetMapping("/")
-    public String index() {
-        return "index"; // Assumes index.html is in src/main/resources/templates
-    }
-}
+// (The WebController class is GONE)
 
 @RestController
 class JobController {
@@ -44,12 +37,9 @@ class JobController {
     public ResponseEntity<?> submitJob(@RequestBody JobRequest jobRequest) {
         // 1. Send to SQS
         var response = sqsTemplate.send(queueUrl, jobRequest.getDescription());
-        
-        // --- THIS IS THE FIX ---
         String messageId = response.messageId().toString();
         
         // 2. Log to database
-        // (Your database logic would go here)
         // Job newJob = new Job(messageId, jobRequest.getDescription(), "SUBMITTED");
         // jobRepository.save(newJob);
         
@@ -60,7 +50,9 @@ class JobController {
     public ResponseEntity<?> getJobs() {
         // 3. Fetch jobs from database
         // return ResponseEntity.ok(jobRepository.findAll());
-        return ResponseEntity.ok("Jobs list would be here");
+        
+        // Return dummy data for now
+        return ResponseEntity.ok(java.util.Collections.emptyList());
     }
 }
 
