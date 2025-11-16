@@ -22,8 +22,6 @@ echo "Initializing Terraform..."
 terraform init
 
 echo "Applying Terraform to create infrastructure..."
-# This creates the VPC, RDS, SQS, ECR, and ECS cluster/services.
-# The services will initially fail because the images don't exist yet.
 terraform apply -auto-approve -var-file=${TF_VARS_FILE}
 
 # --- 4. Get ECR URLs from Terraform Output ---

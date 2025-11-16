@@ -6,8 +6,12 @@ variable "image_uri" { type = string }
 variable "task_role_arn" { type = string }
 variable "execution_role_arn" { type = string }
 variable "vpc_id" { type = string }
-variable "subnet_ids" { type = list(string) }
-variable "security_group_ids" { type = list(string) }
+variable "subnet_ids" { type = list(string) } # Private subnets for tasks
+variable "public_subnet_ids" {
+  type    = list(string)
+  default = []
+} # Public subnets for ALB
+variable "ecs_security_group_ids" { type = list(string) }
 variable "tags" { type = map(string) }
 
 variable "cpu" {
@@ -28,6 +32,10 @@ variable "create_alb" {
   type    = bool
   default = false
 }
+variable "alb_security_group_id" {
+  type    = string
+  default = null
+}
 variable "container_port" {
   type    = number
   default = null
@@ -39,6 +47,10 @@ variable "enable_sqs_scaling" {
   default = false
 }
 variable "sqs_queue_arn" {
+  type    = string
+  default = ""
+}
+variable "sqs_queue_url" {
   type    = string
   default = ""
 }

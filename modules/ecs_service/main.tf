@@ -21,6 +21,12 @@ resource "aws_ecs_task_definition" "main" {
           hostPort      = var.container_port
         }
       ] : []
+      environment = [
+        # Pass the SQS queue URL as an environment variable
+        # This is used by the Python application to avoid hardcoding values.
+        { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
+        { name = "AWS_REGION", value = data.aws_region.current.name }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -40,8 +46,8 @@ resource "aws_lb" "main" {
   name               = "${var.service_name}-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [data.aws_security_group.alb.id]
-  subnets            = data.aws_subnets.public.ids
+  security_groups    = [var.alb_security_group_id]
+  subnets            = var.public_subnet_ids
   tags               = var.tags
 }
 
@@ -80,17 +86,17 @@ resource "aws_ecs_service" "main" {
 
   network_configuration {
     subnets         = var.subnet_ids
-    security_groups = var.security_group_ids
+    security_groups = var.ecs_security_group_ids
   }
 
-  load_balancer {
-    # This block is ignored if `create_alb` is false because the `count` on the `aws_lb_target_group`
-    # will be 0, and `aws_lb_target_group.main[0].arn` will not exist.
-    # The `aws_ecs_service` resource handles this gracefully.
-    count            = var.create_alb ? 1 : 0
-    target_group_arn = aws_lb_target_group.main[0].arn
-    container_name   = var.service_name
-    container_port   = var.container_port
+  # Conditionally create the load_balancer block if create_alb is true
+  dynamic "load_balancer" {
+    for_each = var.create_alb ? [1] : []
+    content {
+      target_group_arn = aws_lb_target_group.main[0].arn
+      container_name   = var.service_name
+      container_port   = var.container_port
+    }
   }
 
   # This ensures the service depends on the ALB listener being ready
@@ -117,7 +123,7 @@ resource "aws_appautoscaling_policy" "sqs_scaling_policy" {
   service_namespace  = aws_appautoscaling_target.ecs_target[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value = 5.0 # Target 5 messages per task
+    target_value       = 5.0 # Target 5 messages per task
     scale_out_cooldown = 60
     scale_in_cooldown  = 60
 
@@ -127,7 +133,7 @@ resource "aws_appautoscaling_policy" "sqs_scaling_policy" {
       statistic   = "Average"
       dimensions {
         name  = "QueueName"
-        value = data.aws_sqs_queue.main.name
+        value = data.aws_sqs_queue.main[0].name
       }
     }
   }
@@ -136,77 +142,9 @@ resource "aws_appautoscaling_policy" "sqs_scaling_policy" {
 # --- Data Sources ---
 data "aws_region" "current" {}
 
-data "aws_security_group" "alb" {
-  count = var.create_alb ? 1 : 0
-  # This is a hacky way to get the ALB SG ID created in the security module.
-  # A better way would be to pass it in as a variable.
-  # For this example, let's assume the root module passes it.
-  # *** FIX: This logic is flawed. We must pass the ALB SG ID in. ***
-  # *** Corrected Logic: Pass ALB SG ID as a variable. ***
-  # *** (The root module is already set up to pass this) ***
-  # *** Let's re-think. The security module creates all SGs. ***
-  # *** The root module should pass the correct SG to the service module. ***
-  # *** The ecs_service module should not be creating SGs. ***
-  # *** The root `main.tf` is already passing `module.security.ecs_sg_id`. ***
-  # *** The ALB SG ID is needed for the `aws_lb` resource. ***
-  
-  # Let's simplify and use the `security_group_ids` variable.
-  # The `aws_lb` resource *should* be created in the `security` module or
-  # the root, but for a self-contained service module, this is tricky.
-  
-  # **Let's move the ALB SG out of this module and into the `security` module.**
-  # (This is already done, the root module calls `security`.)
-  
-  # **Let's move the ALB itself into this module, but use the SG ID from `security`.**
-  # (This requires passing `alb_sg_id` into this module.)
-  
-  # **Final Decision:** The provided `main.tf` is clean. This module will create
-  # the ALB and use the SGs passed into it.
-  # The `aws_lb` resource needs the `alb_sg_id`.
-  # The `aws_ecs_service` needs the `ecs_sg_id`.
-  
-  # **REWRITE:** I'll adjust the `variables.tf` and `main.tf` for this module.
-  # (I will edit the code above to reflect this better logic)
-  # 
-  # `aws_lb.main` `security_groups` should be `var.alb_security_group_ids`
-  # `aws_ecs_service.main` `network_configuration` `security_groups` should be `var.ecs_security_group_ids`
-  
-  # Let's check the root `main.tf`...
-  # `service1`: `security_group_ids = [module.security.ecs_sg_id]`
-  # This is correct for the *service*, but not for the *ALB*.
-  
-  # **Final-Final Decision:** This is getting too complex. I'll stick to the simpler,
-  # slightly less-perfect model above where the service module creates its own ALB
-  # and I'll use data sources to find the SGs and Subnets.
-  # This makes the module more self-contained.
-  
-  # (Reverting to use data sources for simplicity)
-}
-
-data "aws_subnets" "public" {
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-  filter {
-    name   = "tag:Name"
-    values = ["*-public-subnet-*"] # Relies on VPC module tagging
-  }
-}
-
-data "aws_security_group" "alb" {
-  count = var.create_alb ? 1 : 0
-  filter {
-    name   = "vpc-id"
-    values = [var.vpc_id]
-  }
-  filter {
-    name   = "tag:Name"
-    values = ["alb-sg"] # Relies on Security module tagging
-  }
-}
-
 data "aws_sqs_queue" "main" {
   count = var.enable_sqs_scaling ? 1 : 0
-  name  = "job-queue" # Relies on Messaging module name
+  # The queue name is derived from the ARN passed in.
+  # The ARN format is arn:partition:service:region:account-id:resource-id
+  name = split(":", var.sqs_queue_arn)[5]
 }

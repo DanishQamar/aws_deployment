@@ -1,5 +1,5 @@
 resource "aws_ecs_cluster" "main" {
-  name = "main-cluster"
+  name = var.ecs_cluster_name
   tags = var.tags
 }
 

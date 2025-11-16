@@ -63,23 +63,27 @@ module "iam" {
 
 # 
 module "ecs_cluster" {
-  source = "./modules/ecs_cluster"
-  tags   = local.tags
+  source           = "./modules/ecs_cluster"
+  ecs_cluster_name = var.ecs_cluster_name
+  tags             = local.tags
 }
 
-# [cite: 107, 108]
 module "service1" {
-  source             = "./modules/ecs_service"
-  service_name       = "service1"
-  ecs_cluster_id     = module.ecs_cluster.ecs_cluster_id
-  log_group_name     = module.ecs_cluster.log_group_name
-  image_uri          = module.ecs_cluster.service1_ecr_repo_url
-  task_role_arn      = module.iam.service1_task_role_arn
-  execution_role_arn = module.iam.ecs_task_execution_role_arn
-  vpc_id             = module.vpc.vpc_id
-  subnet_ids         = module.vpc.private_subnets
-  security_group_ids = [module.security.ecs_sg_id]
-  tags               = local.tags
+  source                 = "./modules/ecs_service"
+  service_name           = "service1"
+  ecs_cluster_id         = module.ecs_cluster.ecs_cluster_id
+  log_group_name         = module.ecs_cluster.log_group_name
+  ecs_cluster_name       = module.ecs_cluster.ecs_cluster_name
+  image_uri              = module.ecs_cluster.service1_ecr_repo_url
+  sqs_queue_url          = module.messaging.sqs_queue_url # Pass queue URL to service 1
+  task_role_arn          = module.iam.service1_task_role_arn
+  execution_role_arn     = module.iam.ecs_task_execution_role_arn
+  vpc_id                 = module.vpc.vpc_id
+  subnet_ids             = module.vpc.private_subnets
+  public_subnet_ids      = module.vpc.public_subnets
+  ecs_security_group_ids = [module.security.ecs_sg_id]
+  alb_security_group_id  = module.security.alb_sg_id
+  tags                   = local.tags
 
   # Service 1 specifics
   container_port = 8080
@@ -88,17 +92,19 @@ module "service1" {
 
 # [cite: 107, 109]
 module "service2" {
-  source             = "./modules/ecs_service"
-  service_name       = "service2"
-  ecs_cluster_id     = module.ecs_cluster.ecs_cluster_id
-  log_group_name     = module.ecs_cluster.log_group_name
-  image_uri          = module.ecs_cluster.service2_ecr_repo_url
-  task_role_arn      = module.iam.service2_task_role_arn
-  execution_role_arn = module.iam.ecs_task_execution_role_arn
-  vpc_id             = module.vpc.vpc_id
-  subnet_ids         = module.vpc.private_subnets
-  security_group_ids = [module.security.ecs_sg_id]
-  tags               = local.tags
+  source                 = "./modules/ecs_service"
+  service_name           = "service2"
+  ecs_cluster_id         = module.ecs_cluster.ecs_cluster_id
+  log_group_name         = module.ecs_cluster.log_group_name
+  ecs_cluster_name       = module.ecs_cluster.ecs_cluster_name
+  image_uri              = module.ecs_cluster.service2_ecr_repo_url
+  sqs_queue_url          = module.messaging.sqs_queue_url # Pass queue URL to service 2
+  task_role_arn          = module.iam.service2_task_role_arn
+  execution_role_arn     = module.iam.ecs_task_execution_role_arn
+  vpc_id                 = module.vpc.vpc_id
+  subnet_ids             = module.vpc.private_subnets
+  ecs_security_group_ids = [module.security.ecs_sg_id]
+  tags                   = local.tags
 
   # Service 2 specifics
   create_alb         = false

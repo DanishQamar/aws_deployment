@@ -1,22 +1,34 @@
 import os
 import time
 import boto3
+import signal
 import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# We'll discover the queue URL just like in Service 1
-SQS_QUEUE_NAME = "job-queue"
+# --- Graceful Shutdown ---
+class GracefulKiller:
+  kill_now = False
+  def __init__(self):
+    signal.signal(signal.SIGINT, self.exit_gracefully)
+    signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+  def exit_gracefully(self, *args):
+    logger.info("Shutdown signal received. Finishing current job, then exiting.")
+    self.kill_now = True
+
+# Get configuration from environment variables set by Terraform
+SQS_QUEUE_URL = os.environ.get("SQS_QUEUE_URL")
+AWS_REGION = os.environ.get("AWS_REGION")
 
 try:
-    sqs = boto3.client("sqs")
-    queue_url = sqs.get_queue_url(QueueName=SQS_QUEUE_NAME)["QueueUrl"]
-    logger.info(f"Successfully connected to SQS queue: {SQS_QUEUE_NAME}")
+    sqs = boto3.client("sqs", region_name=AWS_REGION)
+    logger.info(f"Service 2 configured for SQS queue: {SQS_QUEUE_URL}")
 except Exception as e:
-    logger.error(f"Could not connect to SQS queue '{SQS_QUEUE_NAME}': {e}")
-    queue_url = None
+    logger.error(f"Could not initialize SQS client: {e}")
+    SQS_QUEUE_URL = None
 
 def process_message(message):
     """
@@ -41,17 +53,18 @@ def process_message(message):
 
 def main_loop():
     """Continuously polls the SQS queue for messages."""
-    if not queue_url:
+    if not SQS_QUEUE_URL:
         logger.error("No SQS queue URL found. Worker exiting.")
         return
 
-    logger.info(f"Starting worker. Polling SQS queue: {SQS_QUEUE_NAME}")
+    logger.info(f"Starting worker. Polling SQS queue: {SQS_QUEUE_URL}")
     
-    while True:
+    killer = GracefulKiller()
+    while not killer.kill_now:
         try:
             # Poll SQS for messages
             response = sqs.receive_message(
-                QueueUrl=queue_url,
+                QueueUrl=SQS_QUEUE_URL,
                 MaxNumberOfMessages=1,  # Process one message at a time
                 WaitTimeSeconds=20,     # Use long polling
                 MessageAttributeNames=['All']
@@ -61,13 +74,18 @@ def main_loop():
                 message = response["Messages"][0]
                 receipt_handle = message["ReceiptHandle"]
 
+                # Check for shutdown signal *after* receiving a message but *before* processing it.
+                if killer.kill_now:
+                    logger.info("Shutdown signal received. Not starting new job. Message will be returned to queue.")
+                    break # Exit the loop and allow the application to shut down.
+
                 try:
                     # Process the message
                     process_message(message)
                     
                     # Delete the message from the queue once processed
                     sqs.delete_message(
-                        QueueUrl=queue_url,
+                        QueueUrl=SQS_QUEUE_URL,
                         ReceiptHandle=receipt_handle
                     )
                     logger.info(f"Deleted message {message['MessageId']} from queue.")
@@ -78,11 +96,14 @@ def main_loop():
                     # expire so another worker can retry it.
             
             else:
-                logger.info("No messages in queue. Polling...")
+                # When long polling is enabled, a lack of messages is normal.
+                # No need to log this every time.
+                pass
 
         except Exception as e:
             logger.error(f"Error polling SQS: {e}")
             time.sleep(10) # Wait before retrying
+    logger.info("Worker has been shut down gracefully.")
 
 if __name__ == "__main__":
     main_loop()

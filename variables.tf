@@ -14,6 +14,12 @@ variable "environment" {
   type        = string
 }
 
+variable "ecs_cluster_name" {
+  description = "The name to give the ECS Cluster. Should be unique per environment."
+  type        = string
+  default     = "dev-cluster"
+}
+
 variable "db_username" {
   description = "Database admin username."
   type        = string
