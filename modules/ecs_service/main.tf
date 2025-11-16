@@ -58,7 +58,7 @@ resource "aws_lb" "main" {
 resource "aws_lb_target_group" "main" {
   count       = var.create_alb ? 1 : 0
   name        = "${var.service_name}-tg"
-  port        = 80
+  port        = var.container_port # <-- FIX: Change 80 to var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
@@ -67,7 +67,6 @@ resource "aws_lb_target_group" "main" {
   }
   tags = var.tags
 }
-
 resource "aws_lb_listener" "http" {
   count             = var.create_alb ? 1 : 0
   load_balancer_arn = aws_lb.main[0].arn
@@ -78,6 +77,9 @@ resource "aws_lb_listener" "http" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.main[0].arn
   }
+
+  # Add this explicit dependency
+  depends_on = [aws_lb_target_group.main]
 }
 
 # --- ECS Service ---
@@ -110,10 +112,12 @@ resource "aws_ecs_service" "main" {
 
 # --- SQS Auto Scaling (Conditional for Service 2) [cite: 109, 110] ---
 resource "aws_appautoscaling_target" "ecs_target" {
-  count              = var.enable_sqs_scaling ? 1 : 0
-  max_capacity       = var.max_tasks
-  min_capacity       = var.min_tasks
-  resource_id        = "service/${var.ecs_cluster_name}/${var.service_name}"
+  count        = var.enable_sqs_scaling ? 1 : 0
+  max_capacity = var.max_tasks
+  min_capacity = var.min_tasks
+  # FIX: Use the 'name' attribute from the service resource
+  # This creates an implicit dependency.
+  resource_id        = "service/${var.ecs_cluster_name}/${aws_ecs_service.main.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }

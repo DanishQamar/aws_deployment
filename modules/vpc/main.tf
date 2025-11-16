@@ -91,3 +91,9 @@ resource "aws_route_table_association" "private" {
 }
 
 data "aws_availability_zones" "available" {}
+
+resource "aws_route_table_association" "database" {
+  count          = 2
+  subnet_id      = aws_subnet.database[count.index].id
+  route_table_id = aws_route_table.private.id
+}

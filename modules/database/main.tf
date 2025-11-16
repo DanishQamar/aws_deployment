@@ -25,7 +25,7 @@ resource "aws_db_instance" "default" {
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name = "${var.tags.Project}-${var.tags.Environment}-db-credentials"
+  name = "${var.tags.Project}-${var.tags.Environment}-db-credentials-v4"
   tags = var.tags
 }
 

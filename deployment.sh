@@ -85,10 +85,14 @@ deploy() {
     aws ecs update-service --region ${AWS_REGION} --cluster ${CLUSTER_NAME} --service "service2" --force-new-deployment
 
     # 5. Output ALB DNS Name
-    CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_domain_name)
+    # ---
+    # FIXED: Changed 'cloudfront_domain_name' to 'alb_dns_name' to match your outputs.tf
+    # ---
+    ALB_DNS=$(terraform output -raw alb_dns_name)
     echo "----------------------------------------"
     echo "Deployment Complete!"
-    echo "UI is available at: https://${CLOUDFRONT_DOMAIN}/"
+    echo "Service 1 is available at: http://${ALB_DNS}/"
+    echo "(Try http://${ALB_DNS}/submit-job to test SQS)"
     echo "----------------------------------------"
 }
 
