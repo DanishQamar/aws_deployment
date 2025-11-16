@@ -1,0 +1,52 @@
+variable "service_name" { type = string }
+variable "ecs_cluster_id" { type = string }
+variable "ecs_cluster_name" { type = string } # Needed for scaling resource ID
+variable "log_group_name" { type = string }
+variable "image_uri" { type = string }
+variable "task_role_arn" { type = string }
+variable "execution_role_arn" { type = string }
+variable "vpc_id" { type = string }
+variable "subnet_ids" { type = list(string) }
+variable "security_group_ids" { type = list(string) }
+variable "tags" { type = map(string) }
+
+variable "cpu" {
+  type    = number
+  default = 256 # 0.25 vCPU
+}
+variable "memory" {
+  type    = number
+  default = 512 # 0.5 GB
+}
+variable "desired_count" {
+  type    = number
+  default = 1
+}
+
+# Service 1 variables
+variable "create_alb" {
+  type    = bool
+  default = false
+}
+variable "container_port" {
+  type    = number
+  default = null
+}
+
+# Service 2 variables
+variable "enable_sqs_scaling" {
+  type    = bool
+  default = false
+}
+variable "sqs_queue_arn" {
+  type    = string
+  default = ""
+}
+variable "min_tasks" {
+  type    = number
+  default = 1
+}
+variable "max_tasks" {
+  type    = number
+  default = 4 # As per your diagram
+}
