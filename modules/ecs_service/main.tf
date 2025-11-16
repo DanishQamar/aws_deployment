@@ -25,14 +25,25 @@ resource "aws_ecs_task_definition" "main" {
         # Pass the SQS queue URL as an environment variable
         # This is used by the Python application to avoid hardcoding values.
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
-        { name = "SQS_QUEUE_NAME", value = var.sqs_queue_name },# We will add this variable
+        { name = "SQS_QUEUE_NAME", value = var.sqs_queue_name }, # We will add this variable
         { name = "AWS_REGION", value = data.aws_region.current.name },
         { name = "DB_HOST", value = var.db_host },
         { name = "DB_NAME", value = var.db_name },
         # Pass the ARN of the secret, not the credentials themselves
-        { name = "DB_CREDENTIALS_SECRET_ARN", value = var.db_credentials_secret_arn }
-        
+        #{ name = "DB_CREDENTIALS_SECRET_ARN", value = var.db_credentials_secret_arn }
+
       ]
+      secrets = [
+        {
+          "name" : "username", # Creates an env var named 'username'
+          "valueFrom" : "${var.db_credentials_secret_arn}:username::"
+        },
+        {
+          "name" : "password", # Creates an env var named 'password'
+          "valueFrom" : "${var.db_credentials_secret_arn}:password::"
+        }
+      ]
+      
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -60,13 +71,19 @@ resource "aws_lb" "main" {
 resource "aws_lb_target_group" "main" {
   count       = var.create_alb ? 1 : 0
   name        = "${var.service_name}-tg"
-  port        = var.container_port # <-- FIX: Change 80 to var.container_port
+  port        = var.container_port
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
+
   health_check {
-    path = "/"
+    # --- FIX IS HERE ---
+    path     = "/jobs" # Change this from "/" to "/jobs"
+    matcher  = "200"   # Explicitly state that 200 is healthy
+    protocol = "HTTP"
+    # --- END FIX ---
   }
+
   tags = var.tags
 }
 resource "aws_lb_listener" "http" {

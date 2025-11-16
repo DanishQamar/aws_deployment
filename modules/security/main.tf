@@ -31,9 +31,13 @@ resource "aws_security_group" "ecs" {
 
   # Allow traffic from ALB
   ingress {
-    from_port       = 0
-    to_port         = 0
-    protocol        = "-1"
+    # --- START FIX ---
+    # Be specific about the port Service 1 uses (8080)
+    description     = "Allow ALB traffic to Service 1"
+    from_port       = 8080 # This is the container_port for service1
+    to_port         = 8080 # This is the container_port for service1
+    protocol        = "tcp"
+    # --- END FIX ---
     security_groups = [aws_security_group.alb.id]
   }
 
