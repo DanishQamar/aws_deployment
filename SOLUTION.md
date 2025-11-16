@@ -11,7 +11,7 @@ To build a scalable, cost-effective, and managed architecture, I recommend the f
     * **Amazon CloudFront:** A Content Delivery Network (CDN) to cache the UI at edge locations, providing low latency and high availability for users.
 
 * **Service 1 (Backend Web Server):**
-    * **Amazon ECS with AWS Fargate:** To run the backend service as a container (using the required Python) without needing to manage underlying EC2 instances.
+    * **Amazon ECS with AWS Fargate:** To run the backend service as a container (using the required openjdk17) without needing to manage underlying EC2 instances.
     * **Application Load Balancer (ALB):** To distribute incoming traffic from the UI's API calls to the multiple tasks running Service 1.
 
 * **Queue:**
@@ -55,7 +55,7 @@ You should absolutely create containers for Service 1 and Service 2.
 
 ### Why?
 
-* **Dependency Management:** You can package the specific Python version directly into the image using a `Dockerfile`. This ensures a consistent environment from development to production.
+* **Dependency Management:** You can package the specific java version directly into the image using a `Dockerfile`. This ensures a consistent environment from development to production.
 * **Scalability & Speed:** Containers are lightweight and start quickly. This is essential for Service 2, which needs to scale up and down frequently.
 * **Portability:** The container image built locally will run identically on AWS Fargate.
 * **Managed Services:** Containerizing unlocks the benefits of Amazon ECS and Fargate, removing the need to manage the underlying server infrastructure.

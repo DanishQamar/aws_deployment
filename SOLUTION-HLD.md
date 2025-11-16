@@ -10,6 +10,8 @@ This document outlines the high-level design for deploying a three-tier applicat
 
 ## 1. Solution Architecture
 
+<img src="images/solution_hld.png" alt="alt text" width="300" />
+
 ### 1.1. Architectural Flow
 
 The system operates through a decoupled, event-driven flow:
@@ -88,7 +90,7 @@ All cloud infrastructure will be defined and managed using **Terraform**. This e
 
 ### 3.2. Containerization & CI/CD
 
-1.  **Containerization:** Service 1 and Service 2 will each be packaged as a Docker container using a `Dockerfile` that includes the required Python environment.
+1.  **Containerization:** Service 1 and Service 2 will each be packaged as a Docker container using a `Dockerfile` that includes the required Java environment.
 2.  **CI/CD Pipeline:** An **AWS CodePipeline** will automate the deployment:
     * **Trigger:** On a code commit to the repository.
     * **Build:** **AWS CodeBuild** uses the `Dockerfile` to build the container image.
