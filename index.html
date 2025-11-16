@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Submitter</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; }
+        form { margin-bottom: 20px; }
+        input[type="text"] { width: 70%; padding: 8px; margin-right: 10px; }
+        button { padding: 8px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #e9ecef; }
+        .status { padding: 5px; color: white; border-radius: 4px; text-align: center; }
+        .status-SUBMITTED { background-color: #ffc107; }
+        .status-IN_PROGRESS { background-color: #17a2b8; }
+        .status-COMPLETE { background-color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Job Management</h1>
+
+        <h2>Submit a New Job</h2>
+        <form id="jobForm">
+            <input type="text" id="jobDescription" placeholder="Enter job description" required>
+            <button type="submit">Submit Job</button>
+        </form>
+
+        <h2>Submitted Jobs</h2>
+        <button onclick="fetchJobs()">Refresh Jobs</button>
+        <table id="jobsTable">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Submitted At</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Job rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // JavaScript to handle form submission and fetching jobs
+        // This would typically be in a separate .js file
+        document.getElementById('jobForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const description = document.getElementById('jobDescription').value;
+            await fetch('/submit-job', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ description: description })
+            });
+            document.getElementById('jobDescription').value = '';
+            fetchJobs();
+        });
+
+        async function fetchJobs() {
+            const response = await fetch('/jobs');
+            const jobs = await response.json();
+            const tbody = document.getElementById('jobsTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            jobs.forEach(job => {
+                const row = `<tr>
+                    <td>${job.id}</td>
+                    <td>${job.description}</td>
+                    <td><span class="status status-${job.status}">${job.status}</span></td>
+                    <td>${new Date(job.submitted_at).toLocaleString()}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+            });
+        }
+
+        // Initial load
+        fetchJobs();
+    </script>
+</body>
+</html>

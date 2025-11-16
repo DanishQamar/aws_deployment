@@ -1,1 +1,2 @@
-boto3  # To read from SQS and write to RDS
+boto3
+psycopg2-binary # For connecting to PostgreSQL
