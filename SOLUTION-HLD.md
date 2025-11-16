@@ -10,6 +10,8 @@ This document outlines the high-level design for deploying a three-tier applicat
 
 ## 1. Solution Architecture
 
+<img src="images/solution_hld.png" alt="alt text" width="300" />
+
 ### 1.1. Architectural Flow
 
 The system operates through a decoupled, event-driven flow:
