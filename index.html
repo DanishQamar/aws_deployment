@@ -73,7 +73,7 @@
                     <td>${job.id}</td>
                     <td>${job.description}</td>
                     <td><span class="status status-${job.status}">${job.status}</span></td>
-                    <td>${new Date(job.submitted_at).toLocaleString()}</td>
+                    <td>${new Date(job.submittedAt).toLocaleString()}</td>
                 </tr>`;
                 tbody.innerHTML += row;
             });
