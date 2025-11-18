@@ -119,7 +119,9 @@ deploy() {
 
     # 3. Build and Push Docker Images
     echo "Logging in to AWS ECR..."
-    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${SERVICE1_REPO_URL}
+    REGISTRY_URL=$(echo $SERVICE1_REPO_URL | cut -d'/' -f1)
+    echo "Registry URL: $REGISTRY_URL"
+    aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY_URL}
 
     echo "Building and pushing Service 1..."
     docker build -t ${SERVICE1_REPO_URL}:latest ./service1
