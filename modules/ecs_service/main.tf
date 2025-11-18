@@ -29,12 +29,12 @@ resource "aws_ecs_task_definition" "main" {
       # Part of Correction #1 from ADR-002
       environment = [
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
-
         { name = "SQS_QUEUE_NAME", value = var.sqs_queue_name },
         { name = "AWS_REGION", value = data.aws_region.current.name },
         { name = "DB_HOST", value = var.db_host },
-        { name = "DB_NAME", value = var.db_name }
-        # { name = "DB_CREDENTIALS_SECRET_ARN", value = var.db_credentials_secret_arn } # <-- This line is removed
+        { name = "DB_NAME", value = var.db_name },
+        # --- Added ECS_CLUSTER_NAME so Service 1 can modify scaling ---
+        { name = "ECS_CLUSTER_NAME", value = var.ecs_cluster_name }
       ]
       # --- END FIX ---
 
@@ -57,9 +57,8 @@ resource "aws_ecs_task_definition" "main" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"  = var.log_group_name
-          "awslogs-region" = data.aws_region.current.name
-
+          "awslogs-group"         = var.log_group_name
+          "awslogs-region"        = data.aws_region.current.name
           "awslogs-stream-prefix" = var.service_name
         }
       }
@@ -83,7 +82,7 @@ resource "aws_lb" "main" {
     enabled = var.enable_alb_access_logs
   }
 
-  tags               = var.tags
+  tags = var.tags
 }
 
 resource "aws_lb_target_group" "main" {
@@ -173,9 +172,8 @@ resource "aws_appautoscaling_policy" "sqs_scaling_policy" {
 
     customized_metric_specification {
       metric_name = "ApproximateNumberOfMessagesVisible"
-
-      namespace = "AWS/SQS"
-      statistic = "Average"
+      namespace   = "AWS/SQS"
+      statistic   = "Average"
       dimensions {
         name  = "QueueName"
         value = data.aws_sqs_queue.main[0].name

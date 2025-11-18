@@ -12,9 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import java.util.Map;
-import java.util.List; // <-- ADDED
+import java.util.List;
 
-// --- ADDED IMPORTS FOR JPA/DATABASE ---
+// --- IMPORTS FOR JPA/DATABASE ---
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import jakarta.persistence.Entity;
@@ -22,7 +22,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
 import java.time.LocalDateTime;
-// --- END OF ADDED IMPORTS ---
+
+// --- ADDED IMPORTS FOR AUTO SCALING ---
+import software.amazon.awssdk.services.applicationautoscaling.ApplicationAutoScalingClient;
+import software.amazon.awssdk.services.applicationautoscaling.model.RegisterScalableTargetRequest;
+import software.amazon.awssdk.services.applicationautoscaling.model.ScalableDimension;
+import software.amazon.awssdk.services.applicationautoscaling.model.ServiceNamespace;
+import software.amazon.awssdk.services.applicationautoscaling.model.ApplicationAutoScalingException;
+// --- END ADDED IMPORTS ---
 
 
 @SpringBootApplication
@@ -33,7 +40,6 @@ public class Service1Application {
 }
 
 // --- vvv JOB STATUS ENUM vvv ---
-// This enum defines the possible states of a job
 enum JobStatus {
     SUBMITTED,
     IN_PROGRESS,
@@ -44,24 +50,20 @@ enum JobStatus {
 
 
 // --- vvv JOB ENTITY vvv ---
-// This class represents the "jobs" table in your PostgreSQL database.
-// Spring Boot (Hibernate) will automatically create/update this table
-// because of `spring.jpa.hibernate.ddl-auto=update` in your properties.
 @Entity
 class Job {
 
     @Id
-    private String id; // We will use the SQS Message ID as the Job ID
+    private String id; 
 
     private String description;
     
-    @Enumerated(EnumType.STRING) // Stores the enum as "SUBMITTED" instead of 0, 1, 2...
+    @Enumerated(EnumType.STRING) 
     private JobStatus status;
     
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
 
-    // JPA needs a no-arg constructor
     public Job() {}
 
     public Job(String id, String description, JobStatus status, LocalDateTime submittedAt, LocalDateTime updatedAt) {
@@ -88,12 +90,8 @@ class Job {
 
 
 // --- vvv JOB REPOSITORY vvv ---
-// This interface is all Spring needs to create a fully functional
-// service for talking to the "Job" table.
 @Repository
 interface JobRepository extends JpaRepository<Job, String> {
-    // You can add custom finders here later, e.g.:
-    // List<Job> findByStatus(JobStatus status);
 }
 // --- ^^^ JOB REPOSITORY ^^^ ---
 
@@ -103,25 +101,20 @@ class JobController {
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
     private final SqsTemplate sqsTemplate;
-    private final JobRepository jobRepository; // <-- INJECT THE REPOSITORY
+    private final JobRepository jobRepository; 
 
     @Value("${SQS_QUEUE_URL}")
     private String queueUrl;
 
-    // --- UPDATED CONSTRUCTOR ---
     public JobController(SqsTemplate sqsTemplate, JobRepository jobRepository) {
         this.sqsTemplate = sqsTemplate;
         this.jobRepository = jobRepository;
     }
 
-    // --- NEW HEALTH CHECK ENDPOINT ---
-    // This endpoint returns 200 OK without checking the database.
-    // This ensures the Load Balancer sees the app as "Healthy" as soon as Java starts.
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("OK");
     }
-    // --- END NEW HEALTH CHECK ---
 
     @PostMapping("/submit-job")
     public ResponseEntity<?> submitJob(@RequestBody JobRequest jobRequest) {
@@ -130,30 +123,82 @@ class JobController {
         String messageId = response.messageId().toString();
         
         // 2. Log to database
-        // This is the new feature you requested:
         LocalDateTime now = LocalDateTime.now();
         Job newJob = new Job(
             messageId, 
             jobRequest.getDescription(), 
-            JobStatus.SUBMITTED, // Set initial status
+            JobStatus.SUBMITTED, 
             now, 
             now
         );
-        jobRepository.save(newJob); // <-- SAVE TO POSTGRES
+        jobRepository.save(newJob); 
         
         logger.info("Successfully submitted job to SQS and DB. Message ID: {}", messageId);
         
-        // Return the newly created Job object as JSON
         return new ResponseEntity<>(newJob, HttpStatus.CREATED);
     }
     
     @GetMapping("/jobs")
     public ResponseEntity<?> getJobs() {
-        // 3. Fetch jobs from database
-        // This is the new feature: list all jobs from Postgres
         List<Job> jobs = jobRepository.findAll();
         return ResponseEntity.ok(jobs);
     }
+}
+
+// --- NEW CONTROLLER FOR SCALING ---
+@RestController
+class ScalingController {
+    private static final Logger logger = LoggerFactory.getLogger(ScalingController.class);
+    
+    private final ApplicationAutoScalingClient autoScalingClient;
+
+    @Value("${ECS_CLUSTER_NAME:my-ecs-project-cluster}")
+    private String clusterName;
+
+    // We assume the worker service is named "service2" as defined in Terraform
+    private final String serviceName = "service2"; 
+
+    public ScalingController() {
+        this.autoScalingClient = ApplicationAutoScalingClient.create();
+    }
+
+    @PostMapping("/update-scaling")
+    public ResponseEntity<?> updateScaling(@RequestBody ScalingRequest request) {
+        logger.info("Received request to update scaling: min={}, max={}", request.getMinCapacity(), request.getMaxCapacity());
+
+        // The resource ID format for ECS Service Auto Scaling is: service/clusterName/serviceName
+        String resourceId = String.format("service/%s/%s", clusterName, serviceName);
+
+        try {
+            RegisterScalableTargetRequest targetRequest = RegisterScalableTargetRequest.builder()
+                .serviceNamespace(ServiceNamespace.ECS)
+                .scalableDimension(ScalableDimension.ECS_SERVICE_DESIRED_COUNT)
+                .resourceId(resourceId)
+                .minCapacity(request.getMinCapacity())
+                .maxCapacity(request.getMaxCapacity())
+                .build();
+
+            autoScalingClient.registerScalableTarget(targetRequest);
+            
+            logger.info("Successfully updated scaling target for {}", resourceId);
+            return ResponseEntity.ok("Scaling updated successfully");
+            
+        } catch (ApplicationAutoScalingException e) {
+            logger.error("Failed to update auto scaling", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("AWS Error: " + e.awsErrorDetails().errorMessage());
+        }
+    }
+}
+
+class ScalingRequest {
+    private int minCapacity;
+    private int maxCapacity;
+
+    public int getMinCapacity() { return minCapacity; }
+    public void setMinCapacity(int minCapacity) { this.minCapacity = minCapacity; }
+    public int getMaxCapacity() { return maxCapacity; }
+    public void setMaxCapacity(int maxCapacity) { this.maxCapacity = maxCapacity; }
 }
 
 class JobRequest {

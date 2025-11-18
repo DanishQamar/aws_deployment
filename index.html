@@ -1,29 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Submitter</title>
     <style>
-        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f9; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; }
-        form { margin-bottom: 20px; }
-        input[type="text"] { width: 70%; padding: 8px; margin-right: 10px; }
-        button { padding: 8px 15px; background-color: #007bff; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #e9ecef; }
-        .status { padding: 5px; color: white; border-radius: 4px; text-align: center; }
-        .status-SUBMITTED { background-color: #ffc107; }
-        .status-IN_PROGRESS { background-color: #17a2b8; }
-        .status-COMPLETE { background-color: #28a745; }
+        body {
+            font-family: sans-serif;
+            margin: 2em;
+            background-color: #f4f4f9;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2 {
+            color: #333;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        input[type="text"] {
+            width: 60%;
+        }
+
+        input[type="number"] {
+            width: 80px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background-color: #e9ecef;
+        }
+
+        .status {
+            padding: 5px;
+            color: white;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .status-SUBMITTED {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .status-IN_PROGRESS {
+            background-color: #17a2b8;
+        }
+
+        .status-COMPLETE {
+            background-color: #28a745;
+        }
+
+        .status-COMPLETED {
+            background-color: #28a745;
+        }
+
+        .status-FAILED {
+            background-color: #dc3545;
+        }
+
+        /* Dashboard Styles - Compact Version */
+        .dashboard {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            flex: 1;
+            padding: 10px;
+            /* Reduced padding */
+            background: #f8f9fa;
+            border-left: 5px solid #007bff;
+            border-radius: 4px;
+        }
+
+        .card h3 {
+            margin: 0 0 5px 0;
+            font-size: 0.85em;
+            /* Smaller font */
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card .value {
+            font-size: 1.5em;
+            /* Smaller font */
+            font-weight: bold;
+            color: #333;
+        }
+
+        .scaling-controls {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .scaling-controls h3 {
+            margin-top: 0;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h1>Job Management</h1>
+        <h1>Job Management System v1</h1>
+
+        <div class="dashboard">
+            <div class="card" style="border-left-color: #ffc107;">
+                <h3>Pending</h3>
+                <div class="value" id="pendingCount">0</div>
+            </div>
+            <div class="card">
+                <h3>In Progress</h3>
+                <div class="value" id="inProgressCount">0</div>
+            </div>
+            <div class="card" style="border-left-color: #28a745;">
+                <h3>Completed</h3>
+                <div class="value" id="completedCount">0</div>
+            </div>
+            <div class="card" style="border-left-color: #dc3545;">
+                <h3>Failed</h3>
+                <div class="value" id="failedCount">0</div>
+            </div>
+        </div>
+
+        <div class="scaling-controls">
+            <h3>Worker Auto-Scaling</h3>
+            <p>Set the range of parallel workers (Service 2 tasks).</p>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label>Min Workers:</label>
+                <input type="number" id="minWorkers" value="2" min="1" max="10">
+                <label>Max Workers:</label>
+                <input type="number" id="maxWorkers" value="2" min="1" max="20">
+                <button onclick="updateScaling()">Update Scaling</button>
+            </div>
+        </div>
 
         <h2>Submit a New Job</h2>
         <form id="jobForm">
@@ -31,8 +192,8 @@
             <button type="submit">Submit Job</button>
         </form>
 
-        <h2>Submitted Jobs</h2>
-        <button onclick="fetchJobs()">Refresh Jobs</button>
+        <h2>Job History</h2>
+        <button onclick="fetchJobs()">Refresh List</button>
         <table id="jobsTable">
             <thead>
                 <tr>
@@ -43,44 +204,101 @@
                 </tr>
             </thead>
             <tbody>
-                <!-- Job rows will be inserted here by JavaScript -->
             </tbody>
         </table>
     </div>
 
     <script>
         // JavaScript to handle form submission and fetching jobs
-        // This would typically be in a separate .js file
-        document.getElementById('jobForm').addEventListener('submit', async function(e) {
+        document.getElementById('jobForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const description = document.getElementById('jobDescription').value;
-            await fetch('/submit-job', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: description })
-            });
-            document.getElementById('jobDescription').value = '';
-            fetchJobs();
+            try {
+                const res = await fetch('/submit-job', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: description })
+                });
+                if (res.ok) {
+                    document.getElementById('jobDescription').value = '';
+                    fetchJobs();
+                } else {
+                    alert("Failed to submit job.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error submitting job.");
+            }
         });
 
+        async function updateScaling() {
+            const min = document.getElementById('minWorkers').value;
+            const max = document.getElementById('maxWorkers').value;
+
+            try {
+                const res = await fetch('/update-scaling', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ minCapacity: parseInt(min), maxCapacity: parseInt(max) })
+                });
+                if (res.ok) {
+                    alert("Scaling updated successfully! ECS will now adjust the worker count.");
+                } else {
+                    const err = await res.text();
+                    alert("Failed to update scaling: " + err);
+                }
+            } catch (e) {
+                alert("Error connecting to server.");
+            }
+        }
+
         async function fetchJobs() {
-            const response = await fetch('/jobs');
-            const jobs = await response.json();
-            const tbody = document.getElementById('jobsTable').querySelector('tbody');
-            tbody.innerHTML = '';
-            jobs.forEach(job => {
-                const row = `<tr>
-                    <td>${job.id}</td>
-                    <td>${job.description}</td>
-                    <td><span class="status status-${job.status}">${job.status}</span></td>
-                    <td>${new Date(job.submittedAt).toLocaleString()}</td>
-                </tr>`;
-                tbody.innerHTML += row;
-            });
+            try {
+                const response = await fetch('/jobs');
+                const jobs = await response.json();
+                const tbody = document.getElementById('jobsTable').querySelector('tbody');
+                tbody.innerHTML = '';
+
+                // Sort by submittedAt desc
+                jobs.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+                let pending = 0;
+                let inProgress = 0;
+                let completed = 0;
+                let failed = 0;
+
+                jobs.forEach(job => {
+                    // Count stats
+                    if (job.status === 'SUBMITTED') pending++;
+                    if (job.status === 'IN_PROGRESS') inProgress++;
+                    if (job.status === 'COMPLETED' || job.status === 'COMPLETE') completed++;
+                    if (job.status === 'FAILED') failed++;
+
+                    const row = `<tr>
+                        <td>${job.id}</td>
+                        <td>${job.description}</td>
+                        <td><span class="status status-${job.status}">${job.status}</span></td>
+                        <td>${new Date(job.submittedAt).toLocaleString()}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+
+                // Update Dashboard
+                document.getElementById('pendingCount').innerText = pending;
+                document.getElementById('inProgressCount').innerText = inProgress;
+                document.getElementById('completedCount').innerText = completed;
+                document.getElementById('failedCount').innerText = failed;
+
+            } catch (err) {
+                console.error("Failed to fetch jobs", err);
+            }
         }
 
         // Initial load
         fetchJobs();
+        // Poll every 5 seconds to update dashboard
+        setInterval(fetchJobs, 5000);
     </script>
 </body>
+
 </html>

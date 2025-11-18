@@ -60,7 +60,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     }
     viewer_protocol_policy = "redirect-to-https"
   }
-  # ADD THIS BLOCK FOR THE /jobs API
+
   ordered_cache_behavior {
     path_pattern     = "/jobs*"
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
@@ -77,7 +77,23 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  # (Add a second ordered_cache_behavior for /jobs*)
+  # --- ADD THIS NEW BLOCK FOR SCALING ---
+  ordered_cache_behavior {
+    path_pattern     = "/update-scaling*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "alb-origin" # Point to the ALB
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Origin"]
+      cookies {
+        forward = "all"
+      }
+    }
+    viewer_protocol_policy = "redirect-to-https"
+  }
+  # --- END NEW BLOCK ---
 
   restrictions {
     geo_restriction {

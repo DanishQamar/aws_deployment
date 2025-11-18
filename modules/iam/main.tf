@@ -17,7 +17,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# --- FIX: Give the Execution Role permission to pull  database secrets ---
+# --- FIX: Give the Execution Role permission to pull database secrets ---
 # This is Correction #1 from ADR-002: Credential Management
 resource "aws_iam_policy" "ecs_execution_secrets_policy" {
   name = "ecs-execution-secrets-policy"
@@ -59,12 +59,19 @@ resource "aws_iam_policy" "service1_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        # This is the ONLY permission service1's code needs
-        Action   = ["sqs:SendMessage", "sqs:GetQueueAttributes"]
+        # Service 1 needs SQS permissions
+        # --- ADDED sqs:GetQueueUrl ---
+        Action   = ["sqs:SendMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
+      },
+      {
+        # --- ADDED for Service Auto Scaling ---
+        # Service 1 needs permission to update the scaling target (Service 2)
+        Action   = ["application-autoscaling:RegisterScalableTarget"]
+        Effect   = "Allow"
+        Resource = "*" 
       }
-      # The "rds-data" and "secretsmanager" blocks are GONE
     ]
   })
 }
@@ -94,8 +101,9 @@ resource "aws_iam_policy" "service2_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-
-        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"] #
+        # --- ADDED sqs:GetQueueUrl ---
+        # This is required for the @SqsListener to resolve the queue name to a URL
+        Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
       },
@@ -105,7 +113,6 @@ resource "aws_iam_policy" "service2_policy" {
         Resource = "arn:aws:rds:*:*:db:${var.db_instance_id}"
       },
       {
-
         Action   = ["secretsmanager:GetSecretValue"]
         Effect   = "Allow"
         Resource = var.db_credentials_secret_arn

@@ -16,6 +16,7 @@ import jakarta.persistence.EnumType;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
+import java.util.Random;
 // --- END OF ADDED IMPORTS ---
 
 @SpringBootApplication
@@ -91,6 +92,7 @@ class JobWorker {
     
     // --- INJECT THE REPOSITORY ---
     private final JobRepository jobRepository;
+    private final Random random = new Random();
 
     public JobWorker(JobRepository jobRepository) {
         this.jobRepository = jobRepository;
@@ -110,20 +112,37 @@ class JobWorker {
         Job job = jobOpt.get();
 
         try {
-            // 1. Update job status to IN_PROGRESS
+            // 1. Random wait before picking up the task (2s to 20s)
+            // Range: 2000ms to 20000ms
+            long startDelay = 2000 + random.nextInt(18001);
+            logger.info("Job {}: Waiting {} ms before starting...", messageId, startDelay);
+            Thread.sleep(startDelay);
+
+            // 2. Update job status to IN_PROGRESS
             job.setStatus(JobStatus.IN_PROGRESS);
             job.setUpdatedAt(LocalDateTime.now());
             jobRepository.save(job);
             logger.info("Processing job: " + messageId);
 
-            // 2. Simulate long-running work
-            Thread.sleep(10000); // 10 seconds
+            // 3. Random processing time (2s to 2 minutes)
+            // Range: 2000ms to 120000ms
+            long processDelay = 2000 + random.nextInt(118001); 
+            logger.info("Job {}: Simulating processing for {} ms...", messageId, processDelay);
+            Thread.sleep(processDelay);
 
-            // 3. Update job status to COMPLETE
-            job.setStatus(JobStatus.COMPLETED);
+            // 4. Randomly determine Outcome (COMPLETED or FAILED)
+            boolean isSuccess = random.nextBoolean();
+            
+            if (isSuccess) {
+                job.setStatus(JobStatus.COMPLETED);
+                logger.info("Finished job: " + messageId + " [SUCCESS]");
+            } else {
+                job.setStatus(JobStatus.FAILED);
+                logger.warn("Finished job: " + messageId + " [FAILED]");
+            }
+            
             job.setUpdatedAt(LocalDateTime.now());
             jobRepository.save(job);
-            logger.info("Finished job: " + messageId);
 
         } catch (InterruptedException e) {
             logger.error("Job " + messageId + " was interrupted.");
