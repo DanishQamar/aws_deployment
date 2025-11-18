@@ -23,8 +23,10 @@ resource "aws_db_instance" "default" {
 }
 
 resource "aws_secretsmanager_secret" "db_credentials" {
-  name = "${var.tags.Project}-${var.tags.Environment}-db-credentials-v9"
-  tags = var.tags
+  name                    = "${var.tags.Project}-${var.tags.Environment}-db-credentials-v11"
+  tags                    = var.tags
+  recovery_window_in_days = 0
+
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {
