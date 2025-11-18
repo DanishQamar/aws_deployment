@@ -1,4 +1,4 @@
-Here is a High-Level Design (HLD) document for the solution, formatted in markdown.
+Here is a High-Level Design (HLD) document for the solution
 
 ---
 
