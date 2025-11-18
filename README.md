@@ -1,6 +1,9 @@
 # aws_deployment
 AWS Cloud Deployment Solution
 
+<img width="857" height="752" alt="image" src="https://github.com/user-attachments/assets/581a10a0-66a4-43ab-9239-80fc214bd5d0" />
+
+
 <img src="images/solution_hld.png" alt="alt text" width="100%" />
 # High-Level Design (HLD): AWS Cloud-Native Job Processing System
 
