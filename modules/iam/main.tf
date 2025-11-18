@@ -40,6 +40,7 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_secrets_attach" {
 # --- END FIX ---
 
 # --- Service 1 Task Role ---
+
 resource "aws_iam_role" "service1_task_role" {
   name = "service1-task-role"
   assume_role_policy = jsonencode({
@@ -53,24 +54,26 @@ resource "aws_iam_role" "service1_task_role" {
   tags = var.tags
 }
 
+
 resource "aws_iam_policy" "service1_policy" {
   name = "service1-policy"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        # Service 1 needs SQS permissions
-        # --- ADDED sqs:GetQueueUrl ---
-        Action   = ["sqs:SendMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"]
+        Action   = ["sqs:SendMessage", "sqs:GetQueueAttributes"]
         Effect   = "Allow"
         Resource = var.sqs_queue_arn
       },
+      # --- NEW PERMISSION: Allow Service 1 to scale Service 2 ---
       {
-        # --- ADDED for Service Auto Scaling ---
-        # Service 1 needs permission to update the scaling target (Service 2)
-        Action   = ["application-autoscaling:RegisterScalableTarget"]
-        Effect   = "Allow"
-        Resource = "*" 
+        Action = [
+          "application-autoscaling:RegisterScalableTarget",
+          "application-autoscaling:DescribeScalableTargets"
+        ]
+        Effect = "Allow"
+        # In production, you should restrict this resource ARN
+        Resource = "*"
       }
     ]
   })

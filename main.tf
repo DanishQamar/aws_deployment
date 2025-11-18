@@ -89,28 +89,29 @@ module "frontend" {
 }
 
 module "service1" {
-  source                    = "./modules/ecs_service"
-  service_name              = "service1"
-  ecs_cluster_id            = module.ecs_cluster.ecs_cluster_id
-  ecs_cluster_name          = module.ecs_cluster.ecs_cluster_name
-  log_group_name            = module.ecs_cluster.log_group_name
-  image_uri                 = module.ecs_cluster.service1_ecr_repo_url
-  task_role_arn             = module.iam.service1_task_role_arn
-  execution_role_arn        = module.iam.ecs_task_execution_role_arn
-  vpc_id                    = module.vpc.vpc_id
-  subnet_ids                = module.vpc.private_subnets
-  public_subnet_ids         = module.vpc.public_subnets
-  ecs_security_group_ids    = [module.security.ecs_sg_id]
-  tags                      = local.tags
-  create_alb                = true
-  alb_security_group_id     = module.security.alb_sg_id
-  container_port            = 8080 // This must match your Java app's port
-  sqs_queue_url             = module.messaging.sqs_queue_url
-  db_host                   = module.database.db_instance_endpoint
-  db_name                   = "appdb"
-  db_credentials_secret_arn = module.database.db_credentials_secret_arn
-  enable_alb_access_logs    = true
-  alb_access_logs_bucket    = aws_s3_bucket.alb_logs.bucket
+  source                     = "./modules/ecs_service"
+  service_name               = "service1"
+  ecs_cluster_id             = module.ecs_cluster.ecs_cluster_id
+  ecs_cluster_name           = module.ecs_cluster.ecs_cluster_name
+  log_group_name             = module.ecs_cluster.log_group_name
+  image_uri                  = module.ecs_cluster.service1_ecr_repo_url
+  task_role_arn              = module.iam.service1_task_role_arn
+  execution_role_arn         = module.iam.ecs_task_execution_role_arn
+  vpc_id                     = module.vpc.vpc_id
+  subnet_ids                 = module.vpc.private_subnets
+  public_subnet_ids          = module.vpc.public_subnets
+  ecs_security_group_ids     = [module.security.ecs_sg_id]
+  tags                       = local.tags
+  create_alb                 = true
+  alb_security_group_id      = module.security.alb_sg_id
+  container_port             = 8080 // This must match your Java app's port
+  sqs_queue_url              = module.messaging.sqs_queue_url
+  db_host                    = module.database.db_instance_endpoint
+  db_name                    = "appdb"
+  db_credentials_secret_arn  = module.database.db_credentials_secret_arn
+  enable_alb_access_logs     = true
+  alb_access_logs_bucket     = aws_s3_bucket.alb_logs.bucket
+  scaling_target_resource_id = "service/${module.ecs_cluster.ecs_cluster_name}/service2"
 }
 
 module "service2" {

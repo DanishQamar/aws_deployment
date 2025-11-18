@@ -90,3 +90,8 @@ variable "db_credentials_secret_arn" {
   type    = string
   default = null
 }
+variable "scaling_target_resource_id" {
+  description = "The Resource ID of the service to scale (e.g., service/cluster/service2)"
+  type        = string
+  default     = ""
+}

@@ -10,13 +10,15 @@ resource "aws_ecs_task_definition" "main" {
 
   container_definitions = jsonencode([
     {
-      name  = var.service_name
-      image = "${var.image_uri}:latest"
-      cpu   = var.cpu
-      # --- FIX: Added container-level memory ---
-      memory = var.memory
-      # --- END FIX ---
+      name      = var.service_name
+      image     = "${var.image_uri}:latest"
+      cpu       = var.cpu
+      memory    = var.memory
       essential = true
+
+      # --- ADDED: Stop Timeout for Graceful Shutdown ---
+      # 120s to allow long-running jobs to finish before SIGKILL
+      stopTimeout = 120
 
       portMappings = var.container_port != null ? [
         {
@@ -34,7 +36,8 @@ resource "aws_ecs_task_definition" "main" {
         { name = "DB_HOST", value = var.db_host },
         { name = "DB_NAME", value = var.db_name },
         # --- Added ECS_CLUSTER_NAME so Service 1 can modify scaling ---
-        { name = "ECS_CLUSTER_NAME", value = var.ecs_cluster_name }
+        { name = "ECS_CLUSTER_NAME", value = var.ecs_cluster_name },
+        { name = "SCALING_TARGET_RESOURCE_ID", value = var.scaling_target_resource_id }
       ]
       # --- END FIX ---
 
