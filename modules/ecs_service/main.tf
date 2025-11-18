@@ -76,6 +76,13 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [var.alb_security_group_id]
   subnets            = var.public_subnet_ids
+
+  access_logs {
+    bucket  = var.alb_access_logs_bucket
+    prefix  = var.service_name
+    enabled = var.enable_alb_access_logs
+  }
+
   tags               = var.tags
 }
 

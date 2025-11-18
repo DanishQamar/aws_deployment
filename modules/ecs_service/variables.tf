@@ -40,6 +40,16 @@ variable "container_port" {
   type    = number
   default = null
 }
+variable "enable_alb_access_logs" {
+  description = "Flag to enable ALB access logging."
+  type        = bool
+  default     = false
+}
+variable "alb_access_logs_bucket" {
+  description = "The S3 bucket name for ALB access logs."
+  type        = string
+  default     = null
+}
 
 # Service 2 variables
 variable "enable_sqs_scaling" {

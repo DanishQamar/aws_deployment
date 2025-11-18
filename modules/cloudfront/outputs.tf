@@ -7,3 +7,4 @@ output "id" {
   description = "The ID of the CloudFront distribution."
   value       = aws_cloudfront_distribution.s3_distribution.id
 }
+

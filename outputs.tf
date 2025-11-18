@@ -2,15 +2,27 @@ output "cloudfront_domain_name" {
   description = "The domain name of the CloudFront distribution."
   value       = module.cloudfront.domain_name
 }
+output "application_url" {
+  description = "The main URL to access the deployed application."
+  value       = "https://${module.cloudfront.domain_name}"
+}
 
 output "service1_ecr_repository_url" {
   description = "The ECR repository URL for Service 1."
   value       = module.ecs_cluster.service1_ecr_repo_url
 }
+output "alb_access_logs_s3_bucket" {
+  description = "The S3 bucket where ALB access logs are stored."
+  value       = aws_s3_bucket.alb_logs.bucket
+}
 
 output "service2_ecr_repository_url" {
   description = "The ECR repository URL for Service 2."
   value       = module.ecs_cluster.service2_ecr_repo_url
+}
+output "application_log_group" {
+  description = "The CloudWatch Log Group for ECS application container logs."
+  value       = module.ecs_cluster.log_group_name
 }
 
 output "ecs_cluster_name" {
