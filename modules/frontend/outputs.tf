@@ -1,6 +1,7 @@
 output "ui_bucket_domain_name" {
   description = "The domain name of the S3 bucket for the UI."
-  value       = aws_s3_bucket.ui_bucket.bucket_domain_name
+  # --- FIX: Changed from .bucket_domain_name to .bucket_regional_domain_name ---
+  value = aws_s3_bucket.ui_bucket.bucket_regional_domain_name
 }
 
 output "oai_path" {

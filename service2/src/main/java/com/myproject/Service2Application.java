@@ -6,7 +6,17 @@ import io.awspring.cloud.sqs.annotation.SqsListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// (Imports for database/JPA repositories would also be here)
+// --- ADDED IMPORTS FOR JPA/DATABASE ---
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import org.springframework.stereotype.Component;
+// --- END OF ADDED IMPORTS ---
 
 @SpringBootApplication
 public class Service2Application {
@@ -15,31 +25,118 @@ public class Service2Application {
     }
 }
 
-@org.springframework.stereotype.Component
+// --- vvv JOB STATUS ENUM vvv ---
+// This MUST be identical to the one in Service 1
+enum JobStatus {
+    SUBMITTED,
+    IN_PROGRESS,
+    COMPLETED,
+    FAILED
+}
+// --- ^^^ JOB STATUS ENUM ^^^ ---
+
+
+// --- vvv JOB ENTITY vvv ---
+// This class MUST be identical to the one in Service 1
+// It allows Service 2 to read/write to the same "jobs" table
+@Entity
+class Job {
+
+    @Id
+    private String id;
+
+    private String description;
+    
+    @Enumerated(EnumType.STRING)
+    private JobStatus status;
+    
+    private LocalDateTime submittedAt;
+    private LocalDateTime updatedAt;
+
+    public Job() {}
+
+    public Job(String id, String description, JobStatus status, LocalDateTime submittedAt, LocalDateTime updatedAt) {
+        this.id = id;
+        this.description = description;
+        this.status = status;
+        this.submittedAt = submittedAt;
+        this.updatedAt = updatedAt;
+    }
+
+    // --- Getters and Setters ---
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getDescription() { return description; }
+    public void setDescription(String d) { this.description = d; }
+    public JobStatus getStatus() { return status; }
+    public void setStatus(JobStatus s) { this.status = s; }
+    public LocalDateTime getSubmittedAt() { return submittedAt; }
+    public void setSubmittedAt(LocalDateTime s) { this.submittedAt = s; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime u) { this.updatedAt = u; }
+}
+// --- ^^^ JOB ENTITY ^^^ ---
+
+
+// --- vvv JOB REPOSITORY vvv ---
+// This interface MUST be identical to the one in Service 1
+@Repository
+interface JobRepository extends JpaRepository<Job, String> {}
+// --- ^^^ JOB REPOSITORY ^^^ ---
+
+
+@Component
 class JobWorker {
     private static final Logger logger = LoggerFactory.getLogger(JobWorker.class);
-    // private final JobRepository jobRepository;
+    
+    // --- INJECT THE REPOSITORY ---
+    private final JobRepository jobRepository;
+
+    public JobWorker(JobRepository jobRepository) {
+        this.jobRepository = jobRepository;
+    }
 
     // The SQS queue name is read from application.properties
     @SqsListener("${SQS_QUEUE_NAME}") 
     public void processMessage(String messageBody, @org.springframework.messaging.handler.annotation.Header("MessageId") String messageId) {
         logger.info("Received job " + messageId + " with body: " + messageBody);
 
+        // --- Find the job in the database ---
+        Optional<Job> jobOpt = jobRepository.findById(messageId);
+        if (jobOpt.isEmpty()) {
+            logger.error("Job {} not found in database! Discarding message.", messageId);
+            return; // Acknowledge SQS message but do nothing
+        }
+        Job job = jobOpt.get();
+
         try {
             // 1. Update job status to IN_PROGRESS
-            // jobRepository.updateStatus(messageId, "IN_PROGRESS");
+            job.setStatus(JobStatus.IN_PROGRESS);
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepository.save(job);
             logger.info("Processing job: " + messageId);
 
             // 2. Simulate long-running work
             Thread.sleep(10000); // 10 seconds
 
             // 3. Update job status to COMPLETE
-            // jobRepository.updateStatus(messageId, "COMPLETE");
+            job.setStatus(JobStatus.COMPLETED);
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepository.save(job);
             logger.info("Finished job: " + messageId);
 
         } catch (InterruptedException e) {
             logger.error("Job " + messageId + " was interrupted.");
-            // (Job would be returned to queue)
+            
+            // --- SET STATUS TO FAILED ON ERROR ---
+            job.setStatus(JobStatus.FAILED);
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepository.save(job);
+            
+            // Re-throw exception so SQS knows processing failed
+            // This will cause SQS to retry or send to a Dead-Letter Queue (DLQ)
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Job processing interrupted", e);
         }
     }
 }

@@ -95,11 +95,11 @@ resource "aws_lb_target_group" "main" {
   target_type = "ip"
 
   health_check {
-    # --- FIX: Changed path from "/" to "/jobs" ---
-    # This is Correction #2 from ADR-002: ALB Health Check Path
-    path     = "/jobs"
+    # --- FIX: Changed path from "/jobs" to "/health" ---
+    # This ensures the service passes health checks even if the DB is still initializing
+    path     = "/health"
     protocol = "HTTP"
-    matcher  = "200" # Be explicit
+    matcher  = "200"
     # --- END FIX ---
   }
   tags = var.tags
