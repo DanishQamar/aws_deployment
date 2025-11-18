@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import java.util.Map;
 import java.util.List;
+import java.util.UUID; // --- ADDED IMPORT ---
 
 // --- IMPORTS FOR JPA/DATABASE ---
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -118,14 +119,14 @@ class JobController {
 
     @PostMapping("/submit-job")
     public ResponseEntity<?> submitJob(@RequestBody JobRequest jobRequest) {
-        // 1. Send to SQS
-        var response = sqsTemplate.send(queueUrl, jobRequest.getDescription());
-        String messageId = response.messageId().toString();
-        
-        // 2. Log to database
+        // --- FIX: RACE CONDITION ---
+        // 1. Generate ID and Save to DB FIRST.
+        // This ensures the job exists before Service 2 tries to process it.
+        String jobId = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
+        
         Job newJob = new Job(
-            messageId, 
+            jobId, 
             jobRequest.getDescription(), 
             JobStatus.SUBMITTED, 
             now, 
@@ -133,7 +134,14 @@ class JobController {
         );
         jobRepository.save(newJob); 
         
-        logger.info("Successfully submitted job to SQS and DB. Message ID: {}", messageId);
+        // 2. Send to SQS with the generated ID in a header
+        sqsTemplate.send(to -> to
+            .queue(queueUrl)
+            .payload(jobRequest.getDescription())
+            .header("job-id", jobId)
+        );
+        
+        logger.info("Successfully submitted job to DB and SQS. Job ID: {}", jobId);
         
         return new ResponseEntity<>(newJob, HttpStatus.CREATED);
     }

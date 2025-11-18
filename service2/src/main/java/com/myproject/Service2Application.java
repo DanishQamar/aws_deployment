@@ -88,15 +88,17 @@ class JobWorker {
 
     // The SQS queue name is read from application.properties
     @SqsListener("${SQS_QUEUE_NAME}") 
-    // --- FIX: Changed "MessageId" to "id" ---
-    // Spring Cloud AWS 3.x maps the SQS Message ID to the standard "id" header.
-    public void processMessage(String messageBody, @Header("id") String messageId) {
-        logger.info("Received job {} with body: {}", messageId, messageBody);
+    // --- FIX: Use the custom "job-id" header ---
+    // We now send the UUID as a custom header from Service 1.
+    public void processMessage(String messageBody, @Header("job-id") String jobId) {
+        logger.info("Received job {} with body: {}", jobId, messageBody);
 
         // --- Find the job in the database ---
-        Optional<Job> jobOpt = jobRepository.findById(messageId);
+        Optional<Job> jobOpt = jobRepository.findById(jobId);
         if (jobOpt.isEmpty()) {
-            logger.error("Job {} not found in database! Discarding message.", messageId);
+            // If this still happens (it shouldn't), we can throw exception to retry, 
+            // but with the new "Save First" logic, this should be fixed.
+            logger.error("Job {} not found in database! Discarding message.", jobId);
             return; 
         }
         Job job = jobOpt.get();
@@ -106,28 +108,28 @@ class JobWorker {
             job.setStatus(JobStatus.IN_PROGRESS);
             job.setUpdatedAt(LocalDateTime.now());
             jobRepository.save(job);
-            logger.info("Processing job: {} ...", messageId);
+            logger.info("Processing job: {} ...", jobId);
 
             // 2. Random Delay (10s to 2 minutes)
             // 10s = 10000ms, 2m = 120000ms. Range = 110000ms
             long delay = 10000 + random.nextInt(110001);
-            logger.info("Job {} sleeping for {} ms", messageId, delay);
+            logger.info("Job {} sleeping for {} ms", jobId, delay);
             Thread.sleep(delay);
 
             // 3. Randomly Update to COMPLETED or FAILED
             if (random.nextBoolean()) {
                 job.setStatus(JobStatus.COMPLETED);
-                logger.info("Job {} finished: COMPLETED", messageId);
+                logger.info("Job {} finished: COMPLETED", jobId);
             } else {
                 job.setStatus(JobStatus.FAILED);
-                logger.info("Job {} finished: FAILED (simulated)", messageId);
+                logger.info("Job {} finished: FAILED (simulated)", jobId);
             }
             
             job.setUpdatedAt(LocalDateTime.now());
             jobRepository.save(job);
 
         } catch (InterruptedException e) {
-            logger.error("Job " + messageId + " was interrupted.");
+            logger.error("Job " + jobId + " was interrupted.");
             
             job.setStatus(JobStatus.FAILED);
             job.setUpdatedAt(LocalDateTime.now());
