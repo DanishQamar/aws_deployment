@@ -8,35 +8,33 @@ output "application_url" {
 }
 
 output "service1_ecr_repository_url" {
-  description = "The ECR repository URL for Service 1."
   value       = module.ecs_cluster.service1_ecr_repo_url
 }
 output "alb_access_logs_s3_bucket" {
-  description = "The S3 bucket where ALB access logs are stored."
   value       = aws_s3_bucket.alb_logs.bucket
 }
 
 output "service2_ecr_repository_url" {
-  description = "The ECR repository URL for Service 2."
   value       = module.ecs_cluster.service2_ecr_repo_url
 }
 output "application_log_group" {
-  description = "The CloudWatch Log Group for ECS application container logs."
   value       = module.ecs_cluster.log_group_name
 }
 
 output "ecs_cluster_name" {
-  description = "The name of the ECS cluster."
   value       = module.ecs_cluster.ecs_cluster_name
 }
 
 output "alb_dns_name" {
-  description = "The DNS name of the ALB for Service 1."
   value       = module.service1.alb_dns_name
 }
 
-# --- ADD THIS NEW OUTPUT ---
 output "ui_bucket_name" {
-  description = "The name (ID) of the S3 bucket."
   value       = module.frontend.ui_bucket_name
+}
+
+# --- CHANGED OUTPUT ---
+output "source_bucket_name" {
+  description = "S3 Bucket for triggering the pipeline"
+  value       = module.cicd.source_bucket_name
 }

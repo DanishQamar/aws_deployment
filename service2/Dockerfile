@@ -1,6 +1,6 @@
 # --- Build Stage ---
-# Use an OpenJDK 17 image with Maven for building
-FROM maven:3.9.6-eclipse-temurin-17-focal AS build
+# Use Maven from ECR Public to avoid Docker Hub rate limits
+FROM public.ecr.aws/docker/library/maven:3.9-amazoncorretto-17 AS build
 
 WORKDIR /app
 
@@ -13,8 +13,8 @@ COPY src ./src
 RUN mvn package -DskipTests
 
 # --- Run Stage ---
-# Use a slim OpenJDK 17 runtime image
-FROM eclipse-temurin:17-jre-focal
+# Use Amazon Corretto 17 from ECR Public (No rate limits on AWS)
+FROM public.ecr.aws/amazoncorretto/amazoncorretto:17
 
 WORKDIR /app
 

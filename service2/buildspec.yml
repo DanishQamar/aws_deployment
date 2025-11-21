@@ -1,0 +1,43 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      # Clean up previous runs
+      - rm -rf imageDetail
+
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPOSITORY_URL
+      - REPOSITORY_URI=$ECR_REPOSITORY_URL
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Java application...
+      - cd service2
+      - mvn package -DskipTests
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - REPOSITORY_URI=$ECR_REPOSITORY_URL
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      
+      - echo Writing image definitions file...
+      
+      # Create a dedicated directory to avoid root path conflicts
+      - mkdir -p imageDetail
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$REPOSITORY_URI:$IMAGE_TAG" > imageDetail/imagedefinitions.json
+      
+      # Verify content and permissions
+      - cat imageDetail/imagedefinitions.json
+artifacts:
+    files:
+      - imagedefinitions.json
+    base-directory: imageDetail
